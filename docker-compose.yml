@@ -1,0 +1,25 @@
+# Local production-like run:
+#   docker compose up --build -d
+#   docker compose exec copilot python cli.py ingest     # first time: build the knowledge base
+#   open http://localhost:8000
+services:
+  copilot:
+    build: .
+    image: agentic-rag-copilot:2.1.0
+    env_file: .env
+    environment:
+      APP_ENV: production
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - copilot-data:/app/data        # chunk store, audit log, conversations
+      - copilot-uploads:/app/uploads  # uploaded originals
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 3g
+
+volumes:
+  copilot-data:
+  copilot-uploads:

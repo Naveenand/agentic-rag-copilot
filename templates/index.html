@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ app_name }}</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" aria-label="Knowledge base">
+      <div class="brand">
+        <h1>Knowledge Copilot</h1>
+        <p class="tagline">Answers from your documents first, the web only when they fall short.</p>
+      </div>
+
+      <button id="newChat" class="btn btn-quiet" type="button">New conversation</button>
+
+      <section class="kb">
+        <div class="kb-head">
+          <h2>Knowledge base</h2>
+          <span id="kbCount" class="kb-count"></span>
+        </div>
+        <ul id="kbList" class="kb-list"><li class="kb-empty">Loading documents…</li></ul>
+        <button id="openAdd" class="btn btn-outline" type="button">Add a document</button>
+      </section>
+
+      <p class="version">v{{ version }}</p>
+    </aside>
+
+    <main class="chat" aria-label="Conversation">
+      <header class="chat-head">
+        <span id="readyDot" class="ready-dot" aria-hidden="true"></span>
+        <span id="readyText" class="ready-text">Connecting…</span>
+      </header>
+
+      <section id="messages" class="messages" aria-live="polite">
+        <div id="welcome" class="welcome">
+          <h2>Ask about your documents</h2>
+          <p>Every answer cites the passages it came from. You can watch each step on the right as the agent works.</p>
+          <div class="examples">
+            <button class="example" type="button">What happens when retrieved documents are not relevant?</button>
+            <button class="example" type="button">How does the tutorial grade retrieved documents?</button>
+            <button class="example" type="button">What is Tavily Search?</button>
+          </div>
+        </div>
+      </section>
+
+      <form id="composer" class="composer">
+        <label for="question" class="visually-hidden">Your question</label>
+        <textarea id="question" rows="1" maxlength="2000" placeholder="Ask a question…" required></textarea>
+        <button id="send" class="btn btn-primary" type="submit">Ask</button>
+      </form>
+      <p class="hint">Press Enter to ask, Shift+Enter for a new line.</p>
+    </main>
+
+    <aside class="path" aria-label="How the answer was found">
+      <h2>How this answer was found</h2>
+      <ol id="steps" class="steps">
+        <li class="step-empty">Ask a question to see the agent's path: routing, search, grading, answer and fact-check.</li>
+      </ol>
+      <dl id="summary" class="summary" hidden>
+        <div><dt>Source</dt><dd id="sumSource"></dd></div>
+        <div><dt>Fact-check</dt><dd id="sumCheck"></dd></div>
+        <div><dt>Searched as</dt><dd id="sumQuery"></dd></div>
+        <div><dt>Time</dt><dd id="sumTime"></dd></div>
+      </dl>
+    </aside>
+  </div>
+
+  <dialog id="addDialog" class="dialog" aria-labelledby="addTitle">
+    <form id="addForm" method="dialog" class="dialog-body">
+      <div class="dialog-head">
+        <h2 id="addTitle">Add a document</h2>
+        <button id="closeAdd" class="icon-btn" type="button" aria-label="Close">×</button>
+      </div>
+      <p class="muted">PDF, Word, Markdown, text or HTML up to 10 MB, or a public web page. Adding a file with the same name replaces the old version.</p>
+
+      <div class="tabs" role="tablist">
+        <button id="tabFile" class="tab is-active" type="button" role="tab" aria-selected="true">File</button>
+        <button id="tabUrl" class="tab" type="button" role="tab" aria-selected="false">Web page</button>
+      </div>
+
+      <div id="paneFile" class="pane">
+        <label for="fileInput">File</label>
+        <input id="fileInput" type="file" accept=".pdf,.docx,.md,.markdown,.txt,.html,.htm">
+      </div>
+      <div id="paneUrl" class="pane" hidden>
+        <label for="urlInput">Page address</label>
+        <input id="urlInput" type="url" placeholder="https://…">
+      </div>
+
+      <label for="adminKey">Admin key</label>
+      <input id="adminKey" type="password" autocomplete="off" placeholder="From ADMIN_API_KEY">
+
+      <button id="addBtn" class="btn btn-primary btn-wide" type="button">Add to knowledge base</button>
+      <p id="addStatus" class="add-status" role="status"></p>
+    </form>
+  </dialog>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

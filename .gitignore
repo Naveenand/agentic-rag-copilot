@@ -1,0 +1,23 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Runtime data (rebuilt by `python cli.py ingest`)
+data/*.db
+data/*.db-*
+uploads/
+
+# Editors
+.vscode/
+.idea/
+.ipynb_checkpoints/
+*.log
