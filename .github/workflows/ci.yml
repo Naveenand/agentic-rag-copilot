@@ -39,40 +39,40 @@ jobs:
         run: docker build -t agentic-rag-copilot:ci .
 
   # CD: after lint, tests and the image build pass on a push to main, update the EC2 server.
-  deploy:
-    needs: docker
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    concurrency:
-      group: production          # one deploy at a time; a newer push waits for the running one
-      cancel-in-progress: false
-    steps:
-      - name: Deploy to EC2
-        env:
-          SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
-          SSH_HOST: ${{ secrets.EC2_HOST }}
-          SSH_USER: ${{ secrets.EC2_USER }}
-        run: |
-          mkdir -p ~/.ssh
-          echo "$SSH_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
-          ssh -i ~/.ssh/deploy_key "$SSH_USER@$SSH_HOST" 'bash -se' <<'EOF'
-          set -euo pipefail
-          cd ~/agentic-rag-copilot
-          git fetch --quiet origin main
-          git reset --hard origin/main      # .env is not in git, so it is kept
-          docker compose up --build -d
-          docker image prune -f             # remove old images so the disk doesn't fill up
-          EOF
+    # deploy:
+    #   needs: docker
+    #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    #   runs-on: ubuntu-latest
+    #   timeout-minutes: 20
+    #   concurrency:
+    #     group: production          # one deploy at a time; a newer push waits for the running one
+    #     cancel-in-progress: false
+    #   steps:
+    #     - name: Deploy to EC2
+    #       env:
+    #         SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+    #         SSH_HOST: ${{ secrets.EC2_HOST }}
+    #         SSH_USER: ${{ secrets.EC2_USER }}
+    #       run: |
+    #         mkdir -p ~/.ssh
+    #         echo "$SSH_KEY" > ~/.ssh/deploy_key
+    #         chmod 600 ~/.ssh/deploy_key
+    #         ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+    #         ssh -i ~/.ssh/deploy_key "$SSH_USER@$SSH_HOST" 'bash -se' <<'EOF'
+    #         set -euo pipefail
+    #         cd ~/agentic-rag-copilot
+    #         git fetch --quiet origin main
+    #         git reset --hard origin/main      # .env is not in git, so it is kept
+    #         docker compose up --build -d
+    #         docker image prune -f             # remove old images so the disk doesn't fill up
+    #         EOF
 
-      - name: Wait until the app is ready
-        env:
-          SSH_HOST: ${{ secrets.EC2_HOST }}
-        run: |
-          for i in $(seq 1 30); do
-            if curl -fsS "http://$SSH_HOST/api/ready"; then echo; echo "Deployed and ready"; exit 0; fi
-            sleep 10
-          done
-          echo "The app did not become ready within 5 minutes"; exit 1
+    #     - name: Wait until the app is ready
+    #       env:
+    #         SSH_HOST: ${{ secrets.EC2_HOST }}
+    #       run: |
+    #         for i in $(seq 1 30); do
+    #           if curl -fsS "http://$SSH_HOST/api/ready"; then echo; echo "Deployed and ready"; exit 0; fi
+    #           sleep 10
+    #         done
+    #         echo "The app did not become ready within 5 minutes"; exit 1
