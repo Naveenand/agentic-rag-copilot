@@ -6,7 +6,7 @@
   <title>{{ app_name }}</title>
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
-<body>
+<body data-access-required="{{ 'true' if access_required else 'false' }}">
   <div class="layout">
     <aside class="sidebar" aria-label="Knowledge base">
       <div class="brand">
@@ -46,6 +46,10 @@
         </div>
       </section>
 
+      <div id="accessBar" class="access" hidden>
+        <label for="accessCode">Access code</label>
+        <input id="accessCode" type="password" autocomplete="off" placeholder="Enter the demo access code">
+      </div>
       <form id="composer" class="composer">
         <label for="question" class="visually-hidden">Your question</label>
         <textarea id="question" rows="1" maxlength="2000" placeholder="Ask a question…" required></textarea>

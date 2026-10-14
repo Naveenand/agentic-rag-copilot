@@ -25,16 +25,21 @@ from app.core.logging import configure_logging, request_id_var
 logger = logging.getLogger("app")
 VERSION = "2.1.0"
 
-SECURITY_HEADERS = {
-    "X-Content-Type-Options": "nosniff",
-    "X-Frame-Options": "DENY",
-    "Referrer-Policy": "no-referrer",
-    # Only our own scripts and styles may run on the page (blocks injected scripts).
-    "Content-Security-Policy": (
-        "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
-        "connect-src 'self'; frame-ancestors 'none'; base-uri 'self'"
-    ),
-}
+
+def security_headers(frame_ancestors: str = "'none'") -> dict[str, str]:
+    headers = {
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
+        # Only our own scripts and styles may run on the page (blocks injected scripts).
+        # frame-ancestors decides which sites may show this page inside an iframe.
+        "Content-Security-Policy": (
+            "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
+            f"connect-src 'self'; frame-ancestors {frame_ancestors}; base-uri 'self'"
+        ),
+    }
+    if frame_ancestors.strip() == "'none'":
+        headers["X-Frame-Options"] = "DENY"  # same rule for older browsers
+    return headers
 
 
 def create_app(
@@ -46,6 +51,7 @@ def create_app(
     settings = settings or get_settings()
     configure_logging(settings.log_level, settings.log_json)
     settings.check_production_safety()
+    headers = security_headers(settings.frame_ancestors)
 
     def load_components(app: FastAPI) -> None:
         started = time.perf_counter()
@@ -88,7 +94,7 @@ def create_app(
         finally:
             request_id_var.reset(token)
         response.headers["X-Request-ID"] = request_id
-        for name, value in SECURITY_HEADERS.items():
+        for name, value in headers.items():
             response.headers.setdefault(name, value)
         if request.url.path.startswith("/api/") and request.url.path != "/api/health":
             logger.info(
@@ -115,7 +121,12 @@ def create_app(
         return templates.TemplateResponse(
             request,
             "index.html",
-            {"app_name": settings.app_name, "version": VERSION, "web_enabled": settings.enable_web},
+            {
+                "app_name": settings.app_name,
+                "version": VERSION,
+                "web_enabled": settings.enable_web,
+                "access_required": bool(settings.access_code),
+            },
         )
 
     return app

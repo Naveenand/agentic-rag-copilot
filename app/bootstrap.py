@@ -50,6 +50,11 @@ def build_components(settings: Settings) -> Components:
     )
     kb.retriever = retriever
     kb.refresh_if_stale()  # records the store version the index was built from
+    if kb.store.count() == 0 and settings.auto_ingest:
+        # Hosts with a wiped disk on restart (e.g. Hugging Face Spaces): rebuild the local chunk store.
+        # Chunks already in Pinecone are skipped, so this is quick and costs nothing extra.
+        logger.info("Knowledge base is empty; AUTO_INGEST is on, ingesting the default sources.")
+        kb.ingest_defaults()
     if kb.store.count() == 0:
         logger.warning("Knowledge base is empty. Run `python cli.py ingest` or upload a document.")
 

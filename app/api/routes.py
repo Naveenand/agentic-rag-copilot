@@ -173,9 +173,7 @@ def ingest_file(
     max_bytes = settings.max_upload_mb * 1024 * 1024
     data = file.file.read(max_bytes + 1)  # read at most one byte past the limit
     if len(data) > max_bytes:
-        raise HTTPException(
-            status.HTTP_413_CONTENT_TOO_LARGE, f"File is larger than {settings.max_upload_mb} MB"
-        )
+        raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, f"File is larger than {settings.max_upload_mb} MB")
     if not data:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "The file is empty")
 

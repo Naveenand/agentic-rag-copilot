@@ -10,7 +10,9 @@ services:
     environment:
       APP_ENV: production
     ports:
-      - "127.0.0.1:8000:8000"
+      # Laptop default: only this computer can open it. On a server, set in .env:
+      #   BIND_ADDR=0.0.0.0   and   HOST_PORT=80   (then the app is at http://<server-ip>)
+      - "${BIND_ADDR:-127.0.0.1}:${HOST_PORT:-8000}:8000"
     volumes:
       - copilot-data:/app/data        # chunk store, audit log, conversations
       - copilot-uploads:/app/uploads  # uploaded originals

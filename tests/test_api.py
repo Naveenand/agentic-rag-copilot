@@ -5,7 +5,7 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.deps import rate_limiter
+from app.api.deps import daily_quota, rate_limiter
 from app.main import create_app
 
 ADMIN = {"X-Admin-Key": "test-admin-key-123456"}
@@ -15,6 +15,7 @@ KB_QUESTION = "In Agentic RAG, what happens when retrieved documents are not rel
 @pytest.fixture
 def client(settings, components):
     rate_limiter._hits.clear()
+    daily_quota._day, daily_quota._count = "", 0
     with TestClient(create_app(settings, components=components)) as c:
         yield c
 
@@ -140,6 +141,38 @@ def test_rate_limit(client, settings):
     assert r.status_code == 429 and int(r.headers["Retry-After"]) > 0
 
 
+def test_access_code_gates_questions(client, settings):
+    settings.access_code = "demo-code-2026"
+    assert client.post("/api/chat", json={"question": "Hello there"}).status_code == 401
+    assert client.post("/api/chat/stream", json={"question": "Hello there"}).status_code == 401
+    wrong = client.post("/api/chat", json={"question": "Hello there"}, headers={"X-Access-Code": "nope"})
+    assert wrong.status_code == 401
+    ok = client.post("/api/chat", json={"question": "Hello there"}, headers={"X-Access-Code": "demo-code-2026"})
+    assert ok.status_code == 200
+    assert client.get("/api/health").status_code == 200  # health and sources stay open
+    assert client.get("/api/sources").status_code == 200
+
+
+def test_page_shows_access_field_only_when_needed(settings, components):
+    with TestClient(create_app(settings, components=components)) as c:
+        assert 'data-access-required="false"' in c.get("/").text
+    settings = settings.model_copy(update={"access_code": "demo-code-2026"})
+    with TestClient(create_app(settings, components=components)) as c:
+        assert 'data-access-required="true"' in c.get("/").text
+
+
+def test_daily_question_limit(client, settings):
+    settings.daily_question_limit = 2
+    codes = [client.post("/api/chat", json={"question": "Hello there"}).status_code for _ in range(3)]
+    assert codes == [200, 200, 429]
+    assert "daily" in client.post("/api/chat", json={"question": "Hello there"}).json()["detail"]
+
+
+def test_non_ascii_keys_are_rejected_not_crashing(client):
+    r = client.get("/api/audit", headers={"X-Admin-Key": "clé-secrète".encode()})
+    assert r.status_code == 401
+
+
 # ---------------------------------------------------------------------------
 # Knowledge base admin
 # ---------------------------------------------------------------------------
@@ -196,3 +229,11 @@ def test_upload_validation(client, settings):
 def test_url_ingest_blocks_private_addresses(client):
     r = client.post("/api/ingest/url", headers=ADMIN, json={"url": "http://127.0.0.1:8000/api/audit"})
     assert r.status_code == 422 and "private address" in r.json()["detail"]
+
+
+def test_frame_ancestors_can_allow_an_embedding_site(settings, components):
+    settings = settings.model_copy(update={"frame_ancestors": "https://huggingface.co"})
+    with TestClient(create_app(settings, components=components)) as c:
+        r = c.get("/api/health")
+    assert "frame-ancestors https://huggingface.co" in r.headers["content-security-policy"]
+    assert "x-frame-options" not in r.headers  # would block the embed in older browsers

@@ -12,15 +12,15 @@ The web server is started with `python run.py` (development) or Docker (producti
 import argparse
 import sys
 import uuid
-from pathlib import Path
 
 from app.core.config import get_settings
 from app.core.logging import configure_logging
-from app.services.ingestion import SUPPORTED_EXTENSIONS, IngestionError
+from app.services.ingestion import IngestionError
 
 
 def cmd_ingest(targets: list[str]) -> int:
     from app.bootstrap import build_knowledge_base
+    from app.services.knowledge_base import default_targets
 
     settings = get_settings()
     missing = settings.missing_keys(("pinecone_api_key",))
@@ -29,17 +29,10 @@ def cmd_ingest(targets: list[str]) -> int:
         return 1
     kb, _ = build_knowledge_base(settings)
 
-    if not targets:
-        targets = list(settings.source_urls) + sorted(
-            str(p) for p in settings.sample_kb_dir.glob("*") if p.suffix.lower() in SUPPORTED_EXTENSIONS
-        )
     failures = 0
-    for target in targets:
+    for target in targets or default_targets(settings):
         try:
-            if target.startswith(("http://", "https://")):
-                r = kb.ingest_url(target)
-            else:
-                r = kb.ingest_file(Path(target))
+            r = kb.ingest_target(target)
             print(
                 f"✓ {r.title}: {r.chunks} chunks ({r.uploaded} uploaded, {r.unchanged} unchanged, {r.removed} removed)"
             )

@@ -158,6 +158,10 @@ button, input, textarea { font: inherit; color: inherit; }
 }
 .composer:focus-within { border-color: var(--kb); }
 .composer textarea { flex: 1; border: 0; resize: none; background: transparent; padding: 6px 8px; max-height: 180px; outline: none; }
+.access { max-width: 720px; width: 100%; margin: 0 auto 8px; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.access label { font-weight: 600; white-space: nowrap; }
+.access input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: var(--radius-s); padding: 7px 10px; background: var(--surface); color: inherit; }
+.access input:focus { outline: 2px solid var(--focus); outline-offset: 1px; }
 .hint { max-width: 720px; width: 100%; margin: 6px auto 14px; font-size: 12px; color: var(--muted); }
 
 /* ---------- Evidence path (the live rail) ---------- */

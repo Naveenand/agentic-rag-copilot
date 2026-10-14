@@ -220,3 +220,16 @@ def test_keyword_index_picks_up_changes_from_another_process(kb, settings, vecto
     assert all(d.metadata["source"] != "vpn.md" for d in kb.retriever.bm25_index.docs)  # server not told yet
     assert kb.refresh_if_stale() is True
     assert any(d.metadata["source"] == "vpn.md" for d in kb.retriever.bm25_index.docs)
+
+
+def test_ingest_defaults_loads_sample_files_and_skips_bad_ones(kb, settings):
+    settings.sample_kb_dir.mkdir(parents=True)
+    (settings.sample_kb_dir / "policy.md").write_text(
+        "# VPN policy\n\nEmployees must connect through the company VPN when working from public Wi-Fi networks.",
+        encoding="utf-8",
+    )
+    (settings.sample_kb_dir / "notes.xyz").write_text("ignored: unsupported type", encoding="utf-8")
+    kb.settings = settings.model_copy(update={"source_urls": ["ftp://not-allowed.example"]})
+    failures = kb.ingest_defaults()
+    assert failures == 1  # the ftp URL; the .xyz file is not even a target
+    assert "policy.md" in {s["source"] for s in kb.store.sources()}

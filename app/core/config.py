@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     upload_dir: Path = BASE_DIR / "uploads"
     max_upload_mb: int = 10
     allow_private_urls: bool = False  # True lets admins ingest intranet URLs (disables SSRF guard)
+    auto_ingest: bool = False  # at startup, ingest SOURCE_URLS + data/sample_kb if the store is empty
 
     # --- Embeddings / vector DB ---
     embed_model: str = "BAAI/bge-small-en-v1.5"
@@ -86,7 +87,10 @@ class Settings(BaseSettings):
 
     # --- API protection ---
     rate_limit_per_minute: int = 30  # per client IP on /api/chat; 0 disables
+    access_code: str = ""  # if set, asking needs this code (X-Access-Code header); share it with your demo users
+    daily_question_limit: int = 0  # questions per UTC day for the whole app (caps LLM spend); 0 disables
     checkpointer: str = "sqlite"  # "sqlite" keeps conversations across restarts; "memory" does not
+    frame_ancestors: str = "'none'"  # sites allowed to show the UI in an iframe, e.g. https://huggingface.co
 
     @field_validator("app_env")
     @classmethod

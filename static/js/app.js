@@ -12,7 +12,9 @@
     dialog: $("addDialog"), openAdd: $("openAdd"), closeAdd: $("closeAdd"), tabFile: $("tabFile"),
     tabUrl: $("tabUrl"), paneFile: $("paneFile"), paneUrl: $("paneUrl"), fileInput: $("fileInput"),
     urlInput: $("urlInput"), adminKey: $("adminKey"), addBtn: $("addBtn"), addStatus: $("addStatus"),
+    accessBar: $("accessBar"), accessCode: $("accessCode"),
   };
+  const accessRequired = document.body.dataset.accessRequired === "true";
 
   const STEP_LABELS = {
     route_question: "Route the question",
@@ -46,6 +48,11 @@
   store.set("thread_id", threadId);
   let busy = false;
   let msgCount = 0;
+  if (accessRequired) {
+    els.accessBar.hidden = false;
+    els.accessCode.value = store.get("access_code") || "";
+    els.accessCode.addEventListener("change", () => store.set("access_code", els.accessCode.value.trim()));
+  }
 
   const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
   const escapeHtml = (s = "") => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -154,6 +161,9 @@
   // ---------- Asking (Server-Sent Events over fetch) ----------
   async function ask(question) {
     if (busy || !question.trim()) return;
+    if (accessRequired) store.set("access_code", els.accessCode.value.trim());
+    const code = accessRequired ? els.accessCode.value.trim() : "";
+    if (accessRequired && !code) { els.accessCode.focus(); return; }
     busy = true;
     els.send.disabled = true;
     addUserMessage(question);
@@ -163,13 +173,15 @@
     try {
       const res = await fetch("/api/chat/stream", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(code ? { "X-Access-Code": code } : {}) },
         body: JSON.stringify({ question, thread_id: threadId }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         const detail = typeof body.detail === "string" ? body.detail : "The request was rejected. Check the question and try again.";
-        throw new Error(res.status === 429 ? "You're asking quickly. Wait a few seconds, then ask again." : detail);
+        if (res.status === 401) throw new Error("That access code isn't valid. Check it and ask again.");
+        if (res.status === 429 && !/daily/i.test(detail)) throw new Error("You're asking quickly. Wait a few seconds, then ask again.");
+        throw new Error(detail);
       }
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -204,6 +216,7 @@
   els.composer.addEventListener("submit", (e) => {
     e.preventDefault();
     const q = els.question.value;
+    if (accessRequired && !els.accessCode.value.trim()) { els.accessCode.focus(); return; }  // keep the typed question
     els.question.value = "";
     autoGrow();
     ask(q);

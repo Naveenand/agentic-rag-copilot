@@ -23,7 +23,8 @@ RUN python -c "from sentence_transformers import SentenceTransformer, CrossEncod
 SentenceTransformer('${EMBED_MODEL}'); CrossEncoder('${RERANK_MODEL}')"
 
 # 3) App code, owned by an unprivileged user (a breach can't modify the image).
-RUN useradd --create-home --uid 10001 appuser \
+#    UID 1000 is what Hugging Face Spaces runs containers as.
+RUN useradd --create-home --uid 1000 appuser \
  && mkdir -p /app/data /app/uploads && chown -R appuser:appuser /app /opt/hf-cache
 COPY --chown=appuser:appuser app ./app
 COPY --chown=appuser:appuser templates ./templates

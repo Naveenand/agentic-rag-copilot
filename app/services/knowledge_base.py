@@ -22,9 +22,15 @@ from langchain_core.documents import Document
 
 from app.core.config import Settings
 from app.rag.retrieval import HybridRetriever
-from app.services.ingestion import IngestionError, chunk_markdown, load_file, load_url
+from app.services.ingestion import SUPPORTED_EXTENSIONS, IngestionError, chunk_markdown, load_file, load_url
 
 logger = logging.getLogger(__name__)
+
+
+def default_targets(settings: Settings) -> list[str]:
+    """What a plain `cli.py ingest` loads: SOURCE_URLS plus every supported file in data/sample_kb."""
+    files = sorted(str(p) for p in settings.sample_kb_dir.glob("*") if p.suffix.lower() in SUPPORTED_EXTENSIONS)
+    return list(settings.source_urls) + files
 
 
 class ChunkStore:
@@ -144,6 +150,23 @@ class KnowledgeBase:
     def ingest_file(self, path: Path, display_name: Optional[str] = None) -> IngestResult:
         md, title = load_file(path, display_name)
         return self.ingest(md, source=display_name or path.name, title=title)
+
+    def ingest_target(self, target: str) -> IngestResult:
+        """Ingest a URL (http/https) or a local file path."""
+        if target.startswith(("http://", "https://")):
+            return self.ingest_url(target)
+        return self.ingest_file(Path(target))
+
+    def ingest_defaults(self) -> int:
+        """Ingest default_targets(); returns how many failed (each failure is logged, not raised)."""
+        failures = 0
+        for target in default_targets(self.settings):
+            try:
+                self.ingest_target(target)
+            except (IngestionError, FileNotFoundError) as exc:
+                failures += 1
+                logger.warning("Could not ingest %s: %s", target, exc)
+        return failures
 
     def delete_source(self, source: str) -> int:
         with self._lock:
